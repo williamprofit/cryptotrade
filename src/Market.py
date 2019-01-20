@@ -2,8 +2,8 @@ class Market:
     def __init__(self):
         pass
 
-    def buy(self, quantity):
+    def buy(self, amount):
         pass
 
-    def sell(self, quantity):
+    def sell(self, amount):
         pass
