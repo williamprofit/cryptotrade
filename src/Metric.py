@@ -12,95 +12,50 @@ SOCIAL_SOURCE_TYPES = ["TELEGRAM",
                        "REDDIT",
                        "DISCORD"]
 
+metric_dic = {
+    "daily_active_addresses": "activeAddresses",
+    "network_growth": "newAddresses",
+    "burn_rate": "burnRate",
+    "transaction_volume": "transactionVolume",
+    "github_activity": "activity",
+    "dev_activity": "activity",
+    "exchange_funds_flow": "inOutDifference"
+}
+
 
 class Metric:
-
     def __init__(self):
         pass
 
-    def getDailyActiveAddresses(self, asset, params, unit="priceBtc"):
-        data = prices = san.get(
-            ("daily_active_addresses/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval
-        )
-        return data["activeAddresses"]
-
-    def getNetworkGrowth(self, asset, params):
-        data = san.get(
-            ("network_growth/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date
-        )
-        return data["newAddresses"]
-
-    def getBurnRate(self, asset, params):
-        data = burn_rate = san.get(
-            ("burn_rate/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval
-        )
-        return data["burnRate"]
-
-    def getTransactionVolume(self, asset, params):
-        data = burn_rate = san.get(
-            ("transaction_volume/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval
-        )
-        return data["transactionVolume"]
-
-    def getGitHubActivity(self, asset, params):
-        data = burn_rate = san.get(
-            ("github_activity/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval
-        )
-        return data["activity"]
-
-    def getDevActivity(self, asset, params):
-        data = burn_rate = san.get(
-            ("dev_activity/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval
-        )
-        return data["activity"]
-
-    def getPrices(self, asset, params, unit="priceBtc"):
-        data = prices = san.get(
-            ("prices/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval
-        )
-        return data[unit]
-
-    def getExchangeFundsFlow(self, asset, params):
-        data = san.get(
-            ("exchange_funds_flow/"+asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval
-        )
-        return data["inOutDifference"]
+    def getMetric(self, metric, asset, params):
+        if(metric == "prices"):
+            data = san.get(
+                ("prices/"+asset.slug),
+                from_date=params.from_date,
+                to_date=params.to_date,
+                interval=params.interval
+            )
+            return data[params.unit]
+        elif (metric == "social_volume"):
+            # pre: Asset has to be in sentiment's social_volume_projects
+            data = san.get(
+                ("social_volume/" + asset.slug),
+                from_date=params.from_date,
+                to_date=params.to_date,
+                interval=params.interval,
+                social_volume_type=SOCIAL_VOLUME_TYPES[params.SVT]
+            )
+            return data["mentionsCount"]
+        else:
+            data = san.get(
+                (metric+"/"+asset.slug),
+                from_date=params.from_date,
+                to_date=params.to_date,
+                interval=params.interval
+            )
+            return data[metric_dic[metric]]
 
 # pre: Asset has to be in sentiment's social_volume_projects
-# social_volume_type
-    def getSocialVolume(self, asset, params, idx_type):
-        data = san.get(
-            ("social_volume/" + asset.slug),
-            from_date=params.from_date,
-            to_date=params.to_date,
-            interval=params.interval,
-            social_volume_type=SOCIAL_VOLUME_TYPES[idx_type]
-        )
-        return data["mentionsCount"]
-
     def getSocialChartData(self, params, idx_type, search_text):
         data = san.get(
             ("topic_search/chart_data"),
@@ -123,7 +78,9 @@ class Metric:
 
 
 class MetricParams:
-    def __init__(self, from_date, to_date, interval):
+    def __init__(self, from_date, to_date, interval, SVT=0):
         self.from_date = from_date
         self.to_date = to_date
         self.interval = interval
+        self.SVT = SVT
+        self.unit = "volume"
