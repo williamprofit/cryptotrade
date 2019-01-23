@@ -1,0 +1,21 @@
+
+Updated Daily:
+  daily_active_addresses:
+  network_growth
+
+inclusive:
+  burn_rate
+  transaction_volume
+  exchange_funds_flow
+exclusive:
+  github_activity
+  dev_activity
+  prices
+
+
+daily_active_addresses
+network_growth
+transaction_volume
+github_activity
+dev_activity
+exchange_funds_flow
