@@ -2,35 +2,44 @@ from Market import Market
 import ccxt
 
 class BinanceMarket(Market):
-    def __init__(self, apiKey, secretKey):
-        self.exchange = ccxt.binance()
+  def __init__(self, apiKey, secretKey):
+    self.exchange = ccxt.binance()
 
-        self.exchange.apiKey = apiKey
-        self.exchange.secret = secretKey
+    self.exchange.apiKey = apiKey
+    self.exchange.secret = secretKey
 
-        self.sell_orders = []
-        self.buy_orders  = []
+  def buy(self, asset, amount):
+    super(asset, amount)
 
-    def setLogger(self, logger, logLevel):
-        self.logger   = logger
-        self.logLevel = logLevel
+    # Assume trading with USDT
+    order = self.exchange.create_order(
+      symbol = asset.symbol + '/USDT',
+      type   = 'market',
+      side   = 'buy',
+      amount = amount
+    )
+    asset.amount = self.getBalance(asset.symbol)
 
-    def buy(self, symbol, amount):
-        order = self.exchange.create_order(symbol=symbol, type='market', side='buy', amount=amount)
+    self.logger.log('ANSWER FROM BINANCE: ' + str(order), self.log_level)
 
-        self.buy_orders.append(order)
-        self.logger.log('BUY order. Symbol: ' + symbol + ' Amount: ' + amount, self.logLevel)
+  def sell(self, asset, amount):
+    super(asset, amount)
 
-    def sell(self, symbol, amount):
-        order = self.exchange.create_order(symbol=symbol, type='market', side='sell', amount=amount)
+    # Assume trading with USDT
+    order = self.exchange.create_order(
+      symbol = asset.symbol + '/USDT',
+      type   = 'market',
+      side   = 'sell',
+      amount = amount
+    )
+    asset.amount = self.getBalance(asset.symbol)
 
-        self.sell_orders.append(order)
-        self.logger.log('SELL order. Symbol: ' + symbol + ' Amount: ' + amount, self.logLevel)
+    self.logger.log('ANSWER FROM BINANCE: ' + str(order), self.log_level)
 
-    def getBalance(self, currency=''):
-        balance = self.exchange.fetch_free_balance()
+  def getBalance(self, symbol=''):
+    balance = self.exchange.fetch_free_balance()
 
-        if currency == '':
-            return balance
-        else:
-            return balance[currency]
+    if symbol == '':
+      return balance
+    else:
+      return balance[symbol]
