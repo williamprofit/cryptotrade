@@ -55,6 +55,15 @@ class Metric:
       )
       return data[metric_dic[metric]]
 
+    def MetricsArray(self, asset, params, list_metrics):
+        metricsArray = Metric().getMetric(list_metrics[0], asset, params)
+        for i in range(1, len(list_metrics)):
+            metricColumn = Metric().getMetric(list_metrics[i], asset, params)
+            metricsArray = np.column_stack((metricsArray, metricColumn))
+
+        return metricsArray
+
+
 # pre: Asset has to be in sentiment's social_volume_projects
   def getSocialChartData(self, params, idx_type, search_text):
     data = san.get(
