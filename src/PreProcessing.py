@@ -1,32 +1,32 @@
 from Metric import Metric, MetricParams
 from Asset import Asset
 import numpy as np
+import datetime
 
 
-asset_list = {
-"ethereum":0,
-"bitcoin":1
-}
+class PreProcessing:
+  def __init__(self):
+      pass
 
-class Maxes:
+  def maxCalculator(self, asset, metric_list):
+    met = Metric()
+    start_date = datetime.datetime(2017, 1, 1)
+    end_date   = datetime.datetime(2019, 1, 1)
+    interval   = datetime.timedelta(minutes=5)
+    params     = MetricParams(start_date, end_date, interval)
+    dict_metrics_maxes = {}
+    for metric in metric_list:
+      array = met.getMetric(metric, asset, params)
+      dict_metrics_maxes[metric] = max(array)
 
-    def maxCreator(self, asset, list_metrics, asset_array, asset_list):
+    return dict_metrics_maxes
 
-        if asset not in asset_list:
-            return asset_array[asset_list[asset]]
-        else:
-            metric_list = [
-                "daily_active_addresses",
-                "network_growth",
-                "burn_rate": "burnRate",
-                "transaction_volume",
-                "github_activity",
-                "dev_activity",
-                "exchange_funds_flow"]
 
-            met = Metric()
-            eth = Asset(asset)
-            params = MetricParams("2017-01-01", "2019-01-01", "5m")
+  def normalize(self, dict_metrics_maxes, metrics_array, metric_list):
+    for n in range(len(metrics_list)):
+      metric = metrics_list[n]
+      metric_column = metrics_array[n][:]
+      metric_column = [x/dict_metrix_maxes[metric] for x in metric_column]
+      metrics_array[n][:] = metric_column
 
-            for n in range(len(metrc_list)):
-                Array = met.MetricsArray(eth, params, list_metrics)
+    return metrics_array
