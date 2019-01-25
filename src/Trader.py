@@ -28,12 +28,13 @@ class Trader:
   def backtest(self, start_date, end_date, timeframe):
     self.timeframe = timeframe
     self.market    = BacktestMarket(start_date, end_date, self.timeframe)
+    self.market.setTransactionFees(0.0001)
     self.market.setLogger(self.logger, self.log_level)
     self.market.setPortfolio(self.portfolio)
 
     curr_date = start_date
 
-    while curr_date <= end_date:
+    while curr_date < end_date:
       curr_date = curr_date + self.timeframe
       self.market.setDate(curr_date)
 

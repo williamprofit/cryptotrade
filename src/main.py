@@ -8,15 +8,15 @@ from Portfolio import Portfolio
 import datetime
 
 def main():
-  pass
+  exampleBacktesting()
 
 def exampleBacktesting():
   logger = Logger()
   logger.addTarget('log/backtestlog.txt')
 
-  start    = datetime.datetime(2019, 1, 1)
+  start    = datetime.datetime(2018, 1, 1)
   end      = datetime.datetime(2019, 1, 3)
-  interval = datetime.timedelta(minutes=5)
+  interval = datetime.timedelta(days=1)
 
   portfolio = Portfolio(1000)
   portfolio.addAsset(Asset('ethereum', 'ETH'))

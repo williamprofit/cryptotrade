@@ -1,4 +1,5 @@
 import san
+import sys
 from Asset import Asset
 import datetime
 import time
@@ -100,6 +101,9 @@ class Metric:
       self.getMetric(metric)
 
   def getMetricAt(self, metric, time):
+    if not (self.params.from_date < time and time <= self.params.to_date):
+      print ("Error: trying to access data that's out of bounds")
+      sys.exit(-1)
 
     if metric in self.cache:
       data = self.cache[metric]
@@ -118,8 +122,8 @@ class Metric:
 
     index = differnce_minutes // interval_minutes
 
-    if (index > len(data) or index < 0):
-      print ("Error: trying to access data that's out of bounds")
+    if index >= len(data):
+      index = len(data) - 1
 
     return data[index]
 
