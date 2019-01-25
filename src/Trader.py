@@ -15,13 +15,13 @@ class Trader:
     self.market.setLogger(self.logger, self.log_level)
     self.market.setPortfolio(self.portfolio)
 
-    last_action = datetime(2000, 1, 1)
-    self.curr_time   = datetime.now()
+    last_action     = datetime(2000, 1, 1)
+    self.curr_time  = datetime.now()
 
     while datetime.now() <= end_date:
       if datetime.now() - last_action >= self.timeframe:
-        last_action = datetime.now()
-        self.curr_time   = datetime.now()
+        last_action    = datetime.now()
+        self.curr_time = datetime.now()
 
         self.action()
         self.postAction()
