@@ -101,7 +101,7 @@ class Metric:
       self.getMetric(metric)
 
   def getMetricAt(self, metric, time):
-    if not (self.params.from_date < time and time <= self.params.to_date):
+    if not (self.params.from_date <= time and time <= self.params.to_date):
       print ("Error: trying to access data that's out of bounds")
       sys.exit(-1)
 

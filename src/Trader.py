@@ -38,11 +38,12 @@ class Trader:
     self.curr_time = start_date
 
     while self.curr_time < end_date:
-      self.curr_time = self.curr_time + self.timeframe
       self.market.setDate(self.curr_time)
 
       self.action()
       self.postAction()
+
+      self.curr_time = self.curr_time + self.timeframe
 
     self.finalAction()
 
