@@ -5,28 +5,19 @@ class BacktestMarket(Market):
   def __init__(self, from_date, to_date, interval):
     super().__init__()
 
-    #TODO: rm
-    self.from_date = from_date
-    self.to_date   = to_date
-    self.interval  = interval
-
-    self.params = None
-    self.metric = None
-
+    self.params = MetricParams(from_date, to_date, interval)
     self.curr_date = from_date
-
     self.fees = 0
 
   def buy(self, asset, amount):
     super().buy(asset, amount)
 
     balanceUSDT = self.portfolio.getAsset('USDT').amount
+    price       = self.getPriceOfAsset(asset, self.curr_date)
+    tax         = balanceUSDT * amount * self.fees
 
-    price = self.getPriceOfAsset(asset, self.curr_date)
-    #tax   = balanceUSDT * amount * self.fees
-
-    new_amount_asset = asset.amount + (balanceUSDT * amount) / price
-    new_balanceUSDT  = balanceUSDT - (balanceUSDT * amount)
+    new_amount_asset = asset.amount + ((balanceUSDT - tax) * amount) / price
+    new_balanceUSDT  = balanceUSDT - ((balanceUSDT - tax) * amount)
 
     self.portfolio.updateAsset(asset.symbol, new_amount_asset)
     self.portfolio.updateAsset('USDT', new_balanceUSDT)
@@ -36,10 +27,10 @@ class BacktestMarket(Market):
 
     balanceUSDT = self.portfolio.getAsset('USDT').amount
     price       = self.getPriceOfAsset(asset, self.curr_date)
-    #tax   = 0
+    tax         = asset.amount * amount * price * self.fees
 
     new_amount_asset = asset.amount - (asset.amount * amount)
-    new_balanceUSDT  = balanceUSDT + asset.amount * amount * price
+    new_balanceUSDT  = balanceUSDT + asset.amount * amount * price - tax
 
     self.portfolio.updateAsset(asset.symbol, new_amount_asset)
     self.portfolio.updateAsset('USDT', new_balanceUSDT)
@@ -62,6 +53,5 @@ class BacktestMarket(Market):
       if asset.symbol == 'USDT':
         continue
 
-      self.params = MetricParams(self.from_date, self.to_date, self.interval)
       self.metric = Metric(self.params, asset, ['prices'])
       break

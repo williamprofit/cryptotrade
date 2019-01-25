@@ -8,9 +8,9 @@ class Market:
 
   def buy(self, asset, amount):
     self.checkAmount(amount)
-    msg = ('BUY order. Symbol: ' + str(asset.symbol)
-               + ' Percentage: ' + str(amount)
-                   + ' Amount: ' + str(asset.amount * amount))
+    msg = ('BUY  order. Symbol: ' + str(asset.symbol)
+                + ' Percentage: ' + str(amount)
+                    + ' Amount: ' + str(asset.amount * amount))
 
     self.logger.log(msg , self.log_level)
 
