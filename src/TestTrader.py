@@ -2,14 +2,24 @@ from Trader import Trader
 import random
 
 class TestTrader(Trader):
-  def __init__(self, portfolio, timeframe):
-    super(portfolio, timeframe)
-    random.seed(0)
+  def __init__(self, portfolio, logger, log_level):
+    super().__init__(portfolio, logger, log_level)
+    self.last_action = 'buy'
 
-  #WIP
   def action(self):
-    asset = self.portfolio[0]
-    if random.randint(1, 100) > 50:
-      self.market.buy(asset, asset.amount)
+    super().action()
+
+    asset = self.portfolio.getAsset('ETH')
+
+    if self.last_action == 'buy':
+      self.market.sell(asset, 1)
+      self.last_action = 'sell'
     else:
-      self.market.sell(asset, asset.amount)
+      self.market.buy(asset, 1)
+      self.last_action = 'buy'
+
+  def finalAction(self):
+    asset = self.portfolio.getAsset('ETH')
+    self.market.sell(asset, 1)
+
+    super().finalAction()

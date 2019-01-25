@@ -1,5 +1,5 @@
 class Asset:
-  def __init__(self, slug, symbol, amount):
+  def __init__(self, slug, symbol, amount=0):
     self.amount = amount
     self.slug   = slug
     self.symbol = symbol

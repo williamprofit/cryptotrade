@@ -38,11 +38,11 @@ class Metric:
     if (metric == "prices"):
       data = san.get(
         ("prices/"+self.asset.slug),
-        from_date=params.getFromDate(),
-        to_date=params.getToDate(),
-        interval=params.getInterval()
+        from_date=self.params.getFromDate(),
+        to_date=self.params.getToDate(),
+        interval=self.params.getInterval()
       )
-      cacheData = data[params.unit]
+      cacheData = data[self.params.unit]
     elif (metric == "social_volume"):
       # pre: Asset has to be in sentiment's social_volume_projects
       data = san.get(
@@ -56,9 +56,9 @@ class Metric:
     else:
       data = san.get(
         (metric+"/"+self.asset.slug),
-        from_date=params.getFromDate(),
-        to_date=params.getToDate(),
-        interval=params.getInterval()
+        from_date=self.params.getFromDate(),
+        to_date=self.params.getToDate(),
+        interval=self.params.getInterval()
       )
       cacheData = data[metric_dic[metric]]
     self.cache[metric] = cacheData
@@ -78,9 +78,9 @@ class Metric:
       ("topic_search/chart_data"),
       source=SOCIAL_SOURCE_TYPES[idx_type],
       search_text=search_text,
-      from_date=params.from_date,
-      to_date=params.to_date,
-      interval=params.interval
+      from_date=self.params.from_date,
+      to_date=self.params.to_date,
+      interval=self.params.interval
     )
     return data["chartData"]
 
@@ -89,9 +89,9 @@ class Metric:
       ("topic_search/messages"),
       source=SOCIAL_SOURCE_TYPES[idx_type],
       search_text=search_text,
-      from_date=params.from_date,
-      to_date=params.to_date,
-      interval=params.interval
+      from_date=self.params.from_date,
+      to_date=self.params.to_date,
+      interval=self.params.interval
     )
     return data["messages"]
 
@@ -106,9 +106,9 @@ class Metric:
     else:
       data = self.getMetric(metric)
 
-    differnce = time - params.from_date
+    differnce = time - self.params.from_date
     differnce_minutes = int(differnce.total_seconds()) // 60
-    interval_minutes = int(params.interval.total_seconds()) // 60
+    interval_minutes = int(self.params.interval.total_seconds()) // 60
 
     remainder = differnce_minutes % interval_minutes
     if (remainder >= interval_minutes / 2):
@@ -123,8 +123,8 @@ class Metric:
 
     return data[index]
 
-    def setParams(self, params):
-      self.params = params
+  def setParams(self, params):
+    self.params = params
 
 class MetricParams:
   def __init__(self, from_date, to_date, interval, SVT=0, unit="priceUsd"):
@@ -135,14 +135,14 @@ class MetricParams:
     self.unit = unit
 
   def getToDate(self):
-    return to_date.isoformat()
+    return self.to_date.isoformat()
 
   def getFromDate(self):
-    return from_date.isoformat()
+    return self.from_date.isoformat()
 
   def getInterval(self):
     shortcode = ""
-    seconds = int(interval.total_seconds())
+    seconds = int(self.interval.total_seconds())
 
     s_in_d = 60 * 60 * 24
     s_in_h = 60 * 60
@@ -158,12 +158,12 @@ class MetricParams:
 # Leaving this here for now just so you can see how to set things up
 if __name__ == '__main__':
   from_date = datetime.datetime(2018,1,1,  0, 0)
-  to_date = datetime.datetime(2018, 1, 2,  0, 5)
-  interval = datetime.timedelta(minutes=(5))
-  params = MetricParams(from_date, to_date, interval)
-  ass = Asset("ethereum", "ETH", 0)
-  met = Metric(params, ass, ["prices"])
+  to_date   = datetime.datetime(2018, 1, 2,  0, 5)
+  interval  = datetime.timedelta(minutes=(5))
+  params    = MetricParams(from_date, to_date, interval)
+  ass       = Asset("ethereum", "ETH", 0)
+  met       = Metric(params, ass, ["prices"])
 
   specific_time = to_date - 2*interval
 
-  print( met.getMetricAt("exchange_funds_flow", specific_time))
+  print(met.getMetricAt("exchange_funds_flow", specific_time))
