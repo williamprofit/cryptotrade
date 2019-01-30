@@ -6,9 +6,24 @@ from BinanceMarket import BinanceMarket
 from Asset import Asset
 from Portfolio import Portfolio
 import datetime
+import time
+from Metric import Metric, MetricParams
 
 def main():
-  exampleBacktesting()
+  exampleFronttesting()
+
+def exampleFronttesting():
+  logger = Logger()
+  logger.addTarget('log/fronttestlog.txt')
+
+  portfolio = Portfolio(1000)
+  portfolio.addAsset(Asset('ethereum', 'ETH'))
+
+  end_date  = datetime.datetime(2019, 1, 31)
+  timeframe = datetime.timedelta(minutes=2)
+
+  trader = TestTrader(portfolio, logger, 0)
+  trader.fronttest(end_date, timeframe)
 
 def exampleBacktesting():
   logger = Logger()

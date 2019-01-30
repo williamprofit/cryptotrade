@@ -2,10 +2,10 @@ from Market import Market
 from Metric import Metric, MetricParams
 
 class BacktestMarket(Market):
-  def __init__(self, from_date, to_date, interval):
+  def __init__(self, from_date, to_date, timeframe):
     super().__init__()
 
-    self.params = MetricParams(from_date, to_date, interval)
+    self.params = MetricParams(from_date, to_date, timeframe)
     self.curr_date = from_date
     self.fees = 0
 
