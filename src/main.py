@@ -19,7 +19,7 @@ def exampleFronttesting():
   portfolio = Portfolio(1000)
   portfolio.addAsset(Asset('ethereum', 'ETH'))
 
-  end_date  = datetime.datetime(2019, 1, 31)
+  end_date  = datetime.datetime(2019, 2, 15)
   timeframe = datetime.timedelta(minutes=2)
 
   trader = TestTrader(portfolio, logger, 0)

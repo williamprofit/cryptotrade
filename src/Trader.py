@@ -49,8 +49,6 @@ class Trader:
 
       self.curr_time = self.curr_time + self.timeframe
 
-      time.sleep(timeframe.total_seconds() - 1)
-
     self.finalAction()
 
   def fronttest(self, end_date, timeframe):
