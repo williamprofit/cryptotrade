@@ -26,6 +26,8 @@ metric_dic = {
   "exchange_funds_flow": "inOutDifference"
 }
 
+DATETIME_LENGTH = 19
+
 class Metric:
   def __init__(self, params, asset, metrics=[]):
     self.params = params
@@ -36,6 +38,7 @@ class Metric:
 
   def getMetric(self, metric):
     cacheData = []
+    dates = []
     if (metric == "prices"):
       data = san.get(
         ("prices/"+self.asset.slug),
@@ -43,6 +46,7 @@ class Metric:
         to_date=self.params.getToDate(),
         interval=self.params.getInterval()
       )
+      dates = data.index.values
       cacheData = data[self.params.unit]
     elif (metric == "social_volume"):
       # pre: Asset has to be in sentiment's social_volume_projects
@@ -54,6 +58,7 @@ class Metric:
         social_volume_type=SOCIAL_VOLUME_TYPES[self.params.SVT]
       )
       cacheData = data["mentionsCount"]
+      dates = data.index.values
     else:
       data = san.get(
         (metric+"/"+self.asset.slug),
@@ -62,6 +67,10 @@ class Metric:
         interval=self.params.getInterval()
       )
       cacheData = data[metric_dic[metric]]
+      dates = data.index.values
+
+    cacheData = self.fillMissing(dates, cacheData)
+    sys.exit()
     self.cache[metric] = cacheData
     return cacheData
 
@@ -129,6 +138,40 @@ class Metric:
 
   def setParams(self, params):
     self.params = params
+
+  def areSameDates(self, a, b):
+    return a[:DATETIME_LENGTH] == b[:DATETIME_LENGTH]
+
+  def fillMissing(self, dates, data):
+    current_datetime = self.params.from_date
+    fixed_data = [data[0]]
+    i = 1
+    latest_datetime = current_datetime
+    while i < len(dates):
+      if (self.areSameDates(str(dates[i]), current_datetime.isoformat())):
+        fixed_data.append(data[i])
+        latest_datetime = current_datetime
+        current_datetime += self.params.interval
+        i += 1
+      else:
+        counter = 1
+        from_value = fixed_data[-1]
+        to_value = data[i]
+        temp_datetime = latest_datetime + self.params.interval
+
+        while not (self.areSameDates(str(dates[i]), temp_datetime.isoformat())):
+          counter += 1
+          temp_datetime += self.params.interval
+
+        to_value = data[i]
+        increment = (to_value - from_value) / counter
+        for j in range(1,counter):
+          fixed_data.append(from_value + j * increment)
+
+        current_datetime = latest_datetime + counter * self.params.interval
+        latest_datetime = current_datetime
+
+    return fixed_data
 
 class MetricParams:
   def __init__(self, from_date, to_date, interval, SVT=0, unit="priceUsd"):
