@@ -23,27 +23,27 @@ class LinearRegressionTrader(Trader):
     self.interval = timeframe
     self.params = MetricParams(start_date, end_date+timeframe, timeframe)
     self.metric = Metric(self.params, self.portfolio.getAsset('ETH'), self.metrics)
-    self.metrics_array = self.metric.metricsArray()
+    self.metrics_array = self.metric.metricsArray(self.metrics)
     self.price = self.metric.getMetric("prices")
     self.price = self.price[1:]
+
     super().backtest(start_date, end_date, timeframe)
 
 
   def regression(self):
     y = np.array(self.price)
-
     X = np.array(self.metrics_array)
     X = [x[:-1] for x in X]
-    print("X =")
-    print(X)
-    print("...")
-    print("y =")
-    print(y)
+    #fix this shit
+    X[2]= X[2][:-1]
+    X[3]= X[3][:-1]
+    X[4]= X[4][:-1]
 
 
-    X = np.reshape
+    X = np.transpose(X)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=101)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9, random_state=101)
     lm = sklearn.linear_model.LinearRegression()
     lm.fit(X_train,y_train)
     predictions = lm.predict(X)
@@ -51,9 +51,8 @@ class LinearRegressionTrader(Trader):
     return predictions
 
 
-  def PredictionsAt(self, time):
+  def PredictionsAt(self, time, predictions):
 
-    predictions = self.regression()
     difference = time - self.start
     remainder = difference % self.interval
 
@@ -70,15 +69,14 @@ class LinearRegressionTrader(Trader):
   def action(self):
     super().action()
     predictions = self.regression()
+
     asset = self.portfolio.getAsset('ETH')
     now = self.curr_time
 
-    index = self.PredictionsAt(now)
+    index = self.PredictionsAt(now,predictions)
     prev_price = self.price[index-1]
     pred_price = predictions[index]
     curr_price = self.price[index]
-
-
 
     if pred_price > prev_price:
       self.market.buy(asset, 1)
@@ -91,6 +89,7 @@ class LinearRegressionTrader(Trader):
       print(prev_price)
       print(pred_price)
       print(curr_price)
+
 
 
   def finalAction(self):
