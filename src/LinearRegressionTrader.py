@@ -1,92 +1,92 @@
 from Trader import Trader
-from Metric import Metric, MetricParams
+import Metric
+from Asset import Asset
 import datetime
 import math as m
 import sklearn
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 import numpy as np
+from datetime import datetime, timedelta
+
 
 
 class LinearRegressionTrader(Trader):
 
   def __init__(self, portfolio, logger, log_level, metrics_list):
     super().__init__(portfolio, logger, log_level)
-    self.metrics = metrics_list
-    self.metrics_array = []
-    self.price = []
+
+    self.metrics_list = metrics_list
+    start_time = datetime(2018, 12, 1)
+    end_time = datetime(2018, 12, 2)
+    self.ass = Asset('ethereum', 'ETH')
+    self.timeframe = timedelta(minutes=5)
+    current_metrics_array = self.currentMetricsArrayGenerator(self.ass, start_time, end_time)
+    future_prices_list = self.futurePricesListGenerator(self.ass, start_time, end_time)
+
+    self.linear_model = self.regression(current_metrics_array, future_prices_list)
 
 
-  def backtest(self, start_date, end_date, timeframe):
-    self.start = start_date
-    self.end = end_date
-    self.interval = timeframe
-    self.params = MetricParams(start_date, end_date+timeframe, timeframe)
-    self.metric = Metric(self.params, self.portfolio.getAsset('ETH'), self.metrics)
-    self.metrics_array = self.metric.metricsArray(self.metrics)
-    self.price = self.metric.getMetric("prices")
-    self.price = self.price[1:]
 
-    super().backtest(start_date, end_date, timeframe)
+  def currentMetricsArrayGenerator(self, asset, start_time, end_time):
+    metrics_array = []
+    time_at_moment = start_time
 
+    while time_at_moment < end_time - self.timeframe:
+      metrics_in_moment = []
+      for metric in self.metrics_list:
+        metrics_in_moment.append(Metric.getMetric(metric, self.ass, time_at_moment))
+      metrics_array.append(metrics_in_moment)
+      time_at_moment += self.timeframe
 
-  def regression(self):
-    y = np.array(self.price)
-    X = np.array(self.metrics_array)
-    X = [x[:-1] for x in X]
-    #fix this shit
-    X[2]= X[2][:-1]
-    X[3]= X[3][:-1]
-    X[4]= X[4][:-1]
+    return metrics_array
 
 
-    X = np.transpose(X)
+  def futurePricesListGenerator(self, asset, start_time, end_time):
+    price_list = []
+    time_at_future = start_time + self.timeframe
+
+    while time_at_moment < end_time:
+      price_list.append(Metric.getMetric("price", ass, time_at_future))
+      time_at_future += self.timeframe
+
+    return price_list
 
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9, random_state=101)
+  def regression(self, past_data, future_data):
+    X = past_data
+    y = future_data
     lm = sklearn.linear_model.LinearRegression()
-    lm.fit(X_train,y_train)
-    predictions = lm.predict(X)
+    lm.fit(X,y)
 
-    return predictions
+    return lm
 
 
-  def PredictionsAt(self, time, predictions):
+  def prediction_at_time(list_of_metric_values):
+    prediction = self.linear_model.predict(list_of_metric_values)
 
-    difference = time - self.start
-    remainder = difference % self.interval
-
-    if (remainder >= self.interval / 2):
-      difference += (self.interval - remainder)
-    else:
-      difference -= remainder
-
-    index = difference // self.interval
-
-    return index
+    return prediction
 
 
   def action(self):
     super().action()
-    predictions = self.regression()
 
-    asset = self.portfolio.getAsset('ETH')
     now = self.curr_time
+    list_of_metric_values = []
+    for metric in self.metrics_list:
+      list_of_metric_values.append(Metric.getMetric(metric, self.ass, now))
 
-    index = self.PredictionsAt(now,predictions)
-    prev_price = self.price[index-1]
-    pred_price = predictions[index]
-    curr_price = self.price[index]
+    curr_price = Metric.getMetric(price, self.ass, now)
+    pred_price = self.prediction_at_time(list_of_metric_values)
 
-    if pred_price > prev_price:
+
+    if pred_price > curr_price:
       self.market.buy(asset, 1)
-      print(prev_price)
       print(pred_price)
       print(curr_price)
 
-    elif pred_price < prev_price:
+    elif pred_price < curr_price:
       self.market.sell(asset, 1)
-      print(prev_price)
       print(pred_price)
       print(curr_price)
 
