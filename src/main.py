@@ -7,10 +7,10 @@ from Asset import Asset
 from Portfolio import Portfolio
 import datetime
 import time
-from Metric import Metric, MetricParams
+import Metric
 
 def main():
-  exampleFronttesting()
+  exampleBacktesting()
 
 def exampleFronttesting():
   logger = Logger()
@@ -20,10 +20,13 @@ def exampleFronttesting():
   portfolio.addAsset(Asset('ethereum', 'ETH'))
 
   end_date  = datetime.datetime(2019, 2, 15)
-  timeframe = datetime.timedelta(minutes=2)
+  timeframe = datetime.timedelta(minutes=5)
+
+  apiKey  = '0xWlkQiiwKnhFYleIAKhJpKVfloVbnoianTsWgz9DOM7OEoB5ui2rEXEy4CHDI8C'
+  privKey = 'ldVscclShb30odBaL6lh6ZGB9tHwLPeSlWjgeDTKZOtCso2OU25TyWkbOnP0GyOt'
 
   trader = TestTrader(portfolio, logger, 0)
-  trader.fronttest(end_date, timeframe)
+  trader.fronttest(apiKey, privKey, end_date, timeframe)
 
 def exampleBacktesting():
   logger = Logger()

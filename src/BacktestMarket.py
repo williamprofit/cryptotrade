@@ -1,11 +1,10 @@
 from Market import Market
-from Metric import Metric, MetricParams
+import Metric
 
 class BacktestMarket(Market):
   def __init__(self, from_date, to_date, timeframe):
     super().__init__()
 
-    self.params = MetricParams(from_date, to_date, timeframe)
     self.curr_date = from_date
     self.fees = 0
 
@@ -36,7 +35,7 @@ class BacktestMarket(Market):
     self.portfolio.updateAsset('USDT', new_balanceUSDT)
 
   def getPriceOfAsset(self, asset, date):
-    return self.metric.getMetricAt('prices', date)
+    return Metric.getMetric('price', asset, date)
 
   def setTransactionFees(self, fees):
     self.fees = fees
@@ -47,11 +46,8 @@ class BacktestMarket(Market):
   def setPortfolio(self, portfolio):
     super().setPortfolio(portfolio)
 
-    # Gather the prices of all the assets
+    # TODO: Gather the prices of all the assets
     for asset in self.portfolio.assets:
       # skip USDT
       if asset.symbol == 'USDT':
         continue
-
-      self.metric = Metric(self.params, asset, ['prices'])
-      break

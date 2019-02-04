@@ -51,9 +51,9 @@ class Trader:
 
     self.finalAction()
 
-  def fronttest(self, end_date, timeframe):
+  def fronttest(self, apiKey, privKey, end_date, timeframe):
     self.timeframe = timeframe
-    self.market    = FronttestMarket(self.timeframe)
+    self.market    = FronttestMarket(self.timeframe, apiKey, privKey)
     self.market.setTransactionFees(0.0001)
     self.market.setLogger(self.logger, self.log_level)
     self.market.setPortfolio(self.portfolio)
