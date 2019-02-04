@@ -89,16 +89,143 @@ def cacheMetric(metric, asset, time, data):
 def cacheSantimentMetric(metric, asset, start, interval, data):
   i = 0
   for d in data:
-    cacheMetric('price', asset, start + i * interval, d)
+    cacheMetric(metric, asset, start + i * interval, d)
     i += 1
 
 # PRE: the metric IS stored in cache (see isMetricCached())
 def getCachedMetric(metric, asset, time):
   return METRIC_CACHE[asset.symbol][metric][time]
 
-# TODO: pre download metrics in cache to reduce latency
-def loadMetric(metric, asset, start, end, interval):
-  pass
+# Loads a metric into cache
+def loadMetric(metric, asset, start, end, interval, args=[]):
+  METRIC_LOAD_DIC[metric](metric, asset, start, end, interval, args)
+
+
+def loadPrice(metric, asset, start, end, interval, args):
+  data = san.get(
+    ("prices/" + asset.slug)
+  , from_date = start.isoformat()
+  , to_date   = end.isoformat()
+  , interval  = intervalISOFormat(interval)
+  )
+
+  # Cache all the data
+  cacheSantimentMetric('price', asset, start, interval, data[UNIT])
+
+# Get historical price of an asset. Should be used strictly for historical data.
+# For live data, use price_bid and price_ask (queries Binance)
+def getPrice(metric, asset, time, args):
+  start    = getSanStartTime(time)
+  end      = getSanEndTime(time)
+  interval = getSanInterval()
+
+  loadPrice(metric, asset, start, end, interval, args)
+  return getCachedMetric(metric, asset, time)
+
+
+# PRE: args[0] contains the social volume type (as int)
+def loadSocialVolume(metric, asset, start, end, interval, args):
+  assert len(args) > 0
+
+  data = san.get(
+    ('social_volume/' + asset.slug)
+  , from_date = start.isoformat()
+  , to_date   = end.isoformat()
+  , interval  = intervalISOFormat(interval)
+  , social_volume_type = SOCIAL_VOLUME_TYPES[args[0]]
+  )
+
+  cacheSantimentMetric(metric , asset, start, interval, data['mentionsCount'])
+
+# PRE: args[0] contains the social volume type (as int)
+def getSocialVolume(metric, asset, time, args):
+  assert len(args) > 0
+
+  start    = getSanStartTime(time)
+  end      = getSanEndTime(time)
+  interval = getSanInterval()
+
+  loadSocialVolume(metric, asset, start, end, interval, args)
+  return getCachedMetric(metric, asset, time)
+
+
+# PRE: args[0] contains the social sources type (as int)
+# and  args[1] contains the search text
+def loadSocialChartData(metric, asset, start, end, interval, args):
+  assert len(args) > 1
+
+  data = san.get(
+    ('topic_search/chart_data')
+  , source      = SOCIAL_SOURCE_TYPES[args[0]]
+  , search_text = args[1]
+  , from_date   = start.isoformat()
+  , to_date     = end.isoformat()
+  , interval    = intervalISOFormat(interval)
+  )
+
+  cacheSantimentMetric(metric, asset, start, interval, data['chartData'])
+
+# PRE: args[0] contains the social sources type (as int)
+# and  args[1] contains the search text
+def getSocialChartData(metric, asset, time, args):
+  assert len(args) > 1
+
+  start    = getSanStartTime(time)
+  end      = getSanEndTime(time)
+  interval = getSanInterval()
+
+  loadSocialChartData(metric, asset, start, end, interval, args)
+  return getCachedMetric(metric, asset, time)
+
+
+# PRE: args[0] contains the social source type (as int)
+# and  args[1] contains the search text
+def loadSocialMessages(metric, asset, start, end, interval, args):
+  assert len(args) > 1
+
+  data = san.get(
+    ("topic_search/messages")
+  , source      = SOCIAL_SOURCE_TYPES[args[0]]
+  , search_text = args[1]
+  , from_date   = start.isoformat()
+  , to_date     = end.isoformat()
+  , interval    = intervalISOFormat(interval)
+  )
+
+  cacheSantimentMetric(metric, asset, start, interval, data['messages'])
+
+# PRE: args[0] contains the social source type (as int)
+# and  args[1] contains the search text
+def getSocialMessages(metric, asset, time, args):
+  assert len(args) > 1
+
+  start    = getSanStartTime(time)
+  end      = getSanEndTime(time)
+  interval = getSanInterval()
+
+  loadSocialMessages(metric, asset, start, end, interval, args)
+  return getCachedMetric(metric, asset, time).values
+
+
+def loadSantimentMetric(metric, asset, start, end, interval, args):
+  data = san.get(
+    (metric + "/" + asset.slug)
+  , from_date = start.isoformat()
+  , to_date   = end.isoformat()
+  , interval  = intervalISOFormat(interval)
+  )
+
+  cacheSantimentMetric(metric, asset, start, interval, data[metric_dic[metric]])
+
+# Generic function to get a santiment metric (should not be used as-is, use getMetric(..))
+def getSantimentMetric(metric, asset, time, args):
+  start    = getSanStartTime(time)
+  end      = getSanEndTime(time)
+  interval = getSanInterval()
+
+  loadSantimentMetric(metric, asset, start, end, interval, args)
+  return getCachedMetric(metric, asset, time)
+
 
 # Queries Binance for live bid price of a certain asset (time arg is not used)
 def getPriceBid(metric, asset, time, args):
@@ -109,26 +236,6 @@ def getPriceBid(metric, asset, time, args):
 def getPriceAsk(metric, asset, time, args):
   orderbook = exchange.fetch_order_book(asset.symbol + '/USDT')
   return orderbook['asks'][0][0]
-
-# Get historical price of an asset. Should be used strictly for historical data.
-# For live data, use price_bid and price_ask (queries Binance)
-def getPrice(metric, asset, time, args):
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  data = san.get(
-    ("prices/" + asset.slug)
-  , from_date = start.isoformat()
-  , to_date   = end.isoformat()
-  , interval  = intervalISOFormat(interval)
-  )
-
-  # Cache all the data
-  cacheSantimentMetric(metric, asset, start, interval, data[UNIT])
-
-  index = timeToSantimentIndex(time, start, interval)
-  return data[UNIT][index]
 
 def getPriceOpen(metric, asset, time, args):
   pass
@@ -145,90 +252,6 @@ def getPriceLo(metric, asset, time, args):
 def getVolume(metric, asset, time, args):
   pass
 
-# PRE: args[0] contains the social volume type (as int)
-def getSocialVolume(metric, asset, time, args):
-  assert len(args) > 0
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  data = san.get(
-    ('social_volume/' + asset.slug)
-  , from_date = start.isoformat()
-  , to_date   = end.isoformat()
-  , interval  = intervalISOFormat(interval)
-  , social_volume_type = SOCIAL_VOLUME_TYPES[args[0]]
-  )
-
-  cacheSantimentMetric(metric , asset, start, interval, data['mentionsCount'])
-
-  index = timeToSantimentIndex(time, start, interval)
-  return data['mentionsCount'][index]
-
-# PRE: args[0] contains the social sources type (as int)
-# and  args[1] contains the search text
-def getSocialChartData(metric, asset, time, args):
-  assert len(args) > 1
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  data = san.get(
-    ('topic_search/chart_data')
-  , source      = SOCIAL_SOURCE_TYPES[args[0]]
-  , search_text = args[1]
-  , from_date   = start.isoformat()
-  , to_date     = end.isoformat()
-  , interval    = intervalISOFormat(interval)
-  )
-
-  cacheSantimentMetric(metric, asset, start, interval, data['chartData'])
-  index = timeToSantimentIndex(time, start, interval)
-
-  return data['chartData'][index]['mentionsCount']
-
-# PRE: args[0] contains the social source type (as int)
-# and  args[1] contains the search text
-def getSocialMessages(metric, asset, time, args):
-  assert len(args) > 1
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  data = san.get(
-    ("topic_search/messages")
-  , source      = SOCIAL_SOURCE_TYPES[args[0]]
-  , search_text = args[1]
-  , from_date   = start.isoformat()
-  , to_date     = end.isoformat()
-  , interval    = intervalISOFormat(interval)
-  )
-
-  cacheSantimentMetric(metric, asset, start, interval, data['messages'])
-
-  return data['messages'].values
-
-# Generic function to get a santiment metric (should not be used as-is, use getMetric(..))
-def getSantimentMetric(metric, asset, time, args):
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  data = san.get(
-    (metric_dic[metric] + "/" + asset.slug)
-  , from_date = start.isoformat()
-  , to_date   = end.isoformat()
-  , interval  = intervalISOFormat(interval)
-  )
-
-  cacheSantimentMetric(metric, asset, start, interval, data[metric_dic[metric]])
-
-  index = timeToSantimentIndex(time, start, interval)
-  return data[metric_dic[metric]][index]
-
 
 # Dictionary that pairs a metric with its function
 METRIC_FUNC_DIC = { 'price_bid'              : getPriceBid
@@ -244,6 +267,19 @@ METRIC_FUNC_DIC = { 'price_bid'              : getPriceBid
                   , 'social_volume'          : getSocialVolume
                   , 'social_chart_data'      : getSocialChartData
                   , 'social_messages'        : getSocialMessages
+                  }
+
+METRIC_LOAD_DIC = { 'price'                  : loadPrice
+                  , 'daily_active_addresses' : loadSantimentMetric
+                  , 'network_growth'         : loadSantimentMetric
+                  , 'burn_rate'              : loadSantimentMetric
+                  , 'transaction_volume'     : loadSantimentMetric
+                  , 'github_activity'        : loadSantimentMetric
+                  , 'dev_activity'           : loadSantimentMetric
+                  , 'exchange_funds_flow'    : loadSantimentMetric
+                  , 'social_volume'          : loadSocialVolume
+                  , 'social_chart_data'      : loadSocialChartData
+                  , 'social_messages'        : loadSocialMessages
                   }
 
 # ------------------------ #
@@ -280,13 +316,17 @@ def intervalISOFormat(interval):
 
   return shortcode
 
+# How much data we should fetch around a given time
+sanTimeDelta = datetime.timedelta(days=1)
+
 # Returns the start time at which we should query Santiment for data
 def getSanStartTime(time):
-  return time.replace(hour=0, minute=0) - datetime.timedelta(days=1)
+  return time.replace(hour=0, minute=0) - sanTimeDelta
 
 # Returns the end time at which we should query Santiment for data
 def getSanEndTime(time):
-  return time.replace(hour=0, minute=0) + datetime.timedelta(days=1)
+  return min(time.replace(hour=0, minute=0) + sanTimeDelta
+            ,datetime.datetime.now() - datetime.timedelta(days=1))
 
 # Returns the interval at which Santiment should send us data
 def getSanInterval():
@@ -299,6 +339,39 @@ def myround(x, base=5):
 def reformatTime(time):
   new = time.replace(minute=myround(time.minute) ,second=0, microsecond=0)
   return new
+
+def fillMissingData(self, dates, data, params):
+  current_datetime = params.from_date
+
+  fixed_data = []
+  i = 0
+  latest_datetime = current_datetime
+  while i < len(dates):
+    if (self.areSameDates(dates[i], current_datetime)):
+      fixed_data.append(data[i])
+      latest_datetime = current_datetime
+      current_datetime += params.interval
+      i += 1
+    else:
+      counter = 1
+      from_value = fixed_data[-1]
+      to_value = data[i]
+      temp_datetime = latest_datetime + params.interval
+
+      while not (self.areSameDates(dates[i], temp_datetime)):
+        counter += 1
+        temp_datetime += params.interval
+
+      to_value = data[i]
+      increment = (to_value - from_value) / counter
+      for j in range(1,counter):
+        fixed_data.append(from_value + j * increment)
+
+      current_datetime = latest_datetime + counter * params.interval
+      latest_datetime = current_datetime
+
+  return fixed_data
+
 
 
 # --------------------- #
@@ -314,5 +387,6 @@ if __name__ == '__main__':
   ass = Asset('ethereum', 'ETH')
 
   print(getMetric('price', ass, datetime.datetime(2018, 3, 1, 12, 0)))
+  print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12, 0)))
   print(getMetric('price_bid', ass, datetime.datetime.now()))
   print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12, 0, 0), [3, 'buy']))
