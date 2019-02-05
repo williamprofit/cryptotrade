@@ -68,7 +68,20 @@ def getMetric(metric, asset, time, args=[]):
 
 # Loads a metric into cache
 def loadMetric(metric, asset, start, end, interval, args=[]):
-  METRIC_FUNC_DIC[metric][1](metric, asset, start, end, interval, args)
+  #TODO: clean that shit up
+  _start = start
+  _end   = start
+
+  while True:
+    _end = min(getEndForComplexity(_start, interval, MAX_COMPLEXITY), end)
+
+    METRIC_FUNC_DIC[metric][1](metric, asset, _start, _end, interval, args)
+
+    if _end == end:
+      return
+
+    _start = _end
+    _end   = end
 
 # Returns whether a certain datapoint exists in cache
 def isMetricCached(metric, asset, time):
@@ -273,6 +286,14 @@ def intervalISOFormat(interval):
 # How much data we should fetch around a given time
 sanTimeDelta = datetime.timedelta(days=1)
 
+MAX_COMPLEXITY = 2000
+
+def getDataComplexity(start, end, interval):
+  return int((end - start) / interval)
+
+def getEndForComplexity(start, interval, complexity):
+  return start + interval * complexity
+
 # Returns the start time at which we should query Santiment for data
 def getSanStartTime(time):
   return time.replace(hour=0, minute=0) - sanTimeDelta
@@ -340,8 +361,10 @@ if __name__ == '__main__':
 
   ass = Asset('ethereum', 'ETH')
 
+
+  #loadMetric("social_volume", ass, datetime.datetime(2018, 1, 1), datetime.datetime(2019, 1, 1), datetime.timedelta(minutes=5), [3, "ethereum"])
+
   print(getMetric('price', ass, datetime.datetime(2018, 1, 1, 12)))
   print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12)))
   print(getMetric('price_bid', ass, None))
   print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12), [3, 'buy']))
-  print(getMetric('social_messages', ass, datetime.datetime(2019, 1, 12, 0, 0), [3, 'buy']))
