@@ -54,7 +54,6 @@ class BacktestMarket(Market):
   def setPortfolio(self, portfolio):
     super().setPortfolio(portfolio)
 
-    # TODO: Gather the prices of all the assets
     for asset in self.portfolio.assets:
       # skip USDT
       if asset.symbol != 'USDT':

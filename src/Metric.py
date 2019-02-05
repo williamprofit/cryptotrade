@@ -55,15 +55,20 @@ def setBinanceKeys(apiKey, secretKey):
 
 # Returns the specified metric for any given asset at any given time
 def getMetric(metric, asset, time, args=[]):
-  time = reformatTime(time)
+  if type(time) == type(datetime.datetime):
+    time = reformatTime(time)
 
   if isMetricCached(metric, asset, time):
     return getCachedMetric(metric, asset, time)
 
-  data = METRIC_FUNC_DIC[metric](metric, asset, time, args)
+  data = METRIC_FUNC_DIC[metric][0](metric, asset, time, args)
   cacheMetric(metric, asset, time, data)
 
   return data
+
+# Loads a metric into cache
+def loadMetric(metric, asset, start, end, interval, args=[]):
+  METRIC_FUNC_DIC[metric][1](metric, asset, start, end, interval, args)
 
 # Returns whether a certain datapoint exists in cache
 def isMetricCached(metric, asset, time):
@@ -87,41 +92,25 @@ def cacheMetric(metric, asset, time, data):
 
 # Caches big chunks of santiment data
 def cacheSantimentMetric(metric, asset, start, interval, data):
-  i = 0
-  for d in data:
-    cacheMetric(metric, asset, start + i * interval, d)
-    i += 1
+  for i in range(len(data.index)):
+    time = santimentTimeToDatetime(data.index[i])
+    cacheMetric(metric, asset, time, data.values[i])
 
 # PRE: the metric IS stored in cache (see isMetricCached())
 def getCachedMetric(metric, asset, time):
   return METRIC_CACHE[asset.symbol][metric][time]
 
-# Loads a metric into cache
-def loadMetric(metric, asset, start, end, interval, args=[]):
-  METRIC_LOAD_DIC[metric](metric, asset, start, end, interval, args)
-
 
 def loadPrice(metric, asset, start, end, interval, args):
   data = san.get(
-    ("prices/" + asset.slug)
+    ('prices/' + asset.slug)
   , from_date = start.isoformat()
   , to_date   = end.isoformat()
   , interval  = intervalISOFormat(interval)
   )
 
   # Cache all the data
-  cacheSantimentMetric('price', asset, start, interval, data[UNIT])
-
-# Get historical price of an asset. Should be used strictly for historical data.
-# For live data, use price_bid and price_ask (queries Binance)
-def getPrice(metric, asset, time, args):
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadPrice(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time)
-
+  cacheSantimentMetric(metric, asset, start, interval, data[UNIT])
 
 # PRE: args[0] contains the social volume type (as int)
 def loadSocialVolume(metric, asset, start, end, interval, args):
@@ -136,18 +125,6 @@ def loadSocialVolume(metric, asset, start, end, interval, args):
   )
 
   cacheSantimentMetric(metric , asset, start, interval, data['mentionsCount'])
-
-# PRE: args[0] contains the social volume type (as int)
-def getSocialVolume(metric, asset, time, args):
-  assert len(args) > 0
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadSocialVolume(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time)
-
 
 # PRE: args[0] contains the social sources type (as int)
 # and  args[1] contains the search text
@@ -165,26 +142,13 @@ def loadSocialChartData(metric, asset, start, end, interval, args):
 
   cacheSantimentMetric(metric, asset, start, interval, data['chartData'])
 
-# PRE: args[0] contains the social sources type (as int)
-# and  args[1] contains the search text
-def getSocialChartData(metric, asset, time, args):
-  assert len(args) > 1
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadSocialChartData(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time)
-
-
 # PRE: args[0] contains the social source type (as int)
 # and  args[1] contains the search text
 def loadSocialMessages(metric, asset, start, end, interval, args):
   assert len(args) > 1
 
   data = san.get(
-    ("topic_search/messages")
+    ('topic_search/messages')
   , source      = SOCIAL_SOURCE_TYPES[args[0]]
   , search_text = args[1]
   , from_date   = start.isoformat()
@@ -192,24 +156,11 @@ def loadSocialMessages(metric, asset, start, end, interval, args):
   , interval    = intervalISOFormat(interval)
   )
 
-  cacheSantimentMetric(metric, asset, start, interval, data['messages'])
-
-# PRE: args[0] contains the social source type (as int)
-# and  args[1] contains the search text
-def getSocialMessages(metric, asset, time, args):
-  assert len(args) > 1
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadSocialMessages(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time).values
-
+  cacheSantimentMetric(metric, asset, start, interval, data['messages'].values)
 
 def loadSantimentMetric(metric, asset, start, end, interval, args):
   data = san.get(
-    (metric + "/" + asset.slug)
+    (metric + '/' + asset.slug)
   , from_date = start.isoformat()
   , to_date   = end.isoformat()
   , interval  = intervalISOFormat(interval)
@@ -223,7 +174,12 @@ def getSantimentMetric(metric, asset, time, args):
   end      = getSanEndTime(time)
   interval = getSanInterval()
 
-  loadSantimentMetric(metric, asset, start, end, interval, args)
+  loadMetric(metric, asset, start, end, interval, args)
+
+  #TODO: rm
+  if not isMetricCached(metric, asset, time):
+    print('!!! MISSING DATA !!!', metric, asset, time)
+
   return getCachedMetric(metric, asset, time)
 
 
@@ -253,33 +209,21 @@ def getVolume(metric, asset, time, args):
   pass
 
 
-# Dictionary that pairs a metric with its function
-METRIC_FUNC_DIC = { 'price_bid'              : getPriceBid
-                  , 'price_ask'              : getPriceAsk
-                  , 'price'                  : getPrice
-                  , 'daily_active_addresses' : getSantimentMetric
-                  , 'network_growth'         : getSantimentMetric
-                  , 'burn_rate'              : getSantimentMetric
-                  , 'transaction_volume'     : getSantimentMetric
-                  , 'github_activity'        : getSantimentMetric
-                  , 'dev_activity'           : getSantimentMetric
-                  , 'exchange_funds_flow'    : getSantimentMetric
-                  , 'social_volume'          : getSocialVolume
-                  , 'social_chart_data'      : getSocialChartData
-                  , 'social_messages'        : getSocialMessages
-                  }
-
-METRIC_LOAD_DIC = { 'price'                  : loadPrice
-                  , 'daily_active_addresses' : loadSantimentMetric
-                  , 'network_growth'         : loadSantimentMetric
-                  , 'burn_rate'              : loadSantimentMetric
-                  , 'transaction_volume'     : loadSantimentMetric
-                  , 'github_activity'        : loadSantimentMetric
-                  , 'dev_activity'           : loadSantimentMetric
-                  , 'exchange_funds_flow'    : loadSantimentMetric
-                  , 'social_volume'          : loadSocialVolume
-                  , 'social_chart_data'      : loadSocialChartData
-                  , 'social_messages'        : loadSocialMessages
+# Dictionary that pairs a metric with its get and load functions.
+# Note that sometimes a the load function might not exist eg for live data
+METRIC_FUNC_DIC = { 'price_bid'              : (getPriceBid, None)
+                  , 'price_ask'              : (getPriceAsk, None)
+                  , 'price'                  : (getSantimentMetric, loadPrice)
+                  , 'daily_active_addresses' : (getSantimentMetric, loadSantimentMetric)
+                  , 'network_growth'         : (getSantimentMetric, loadSantimentMetric)
+                  , 'burn_rate'              : (getSantimentMetric, loadSantimentMetric)
+                  , 'transaction_volume'     : (getSantimentMetric, loadSantimentMetric)
+                  , 'github_activity'        : (getSantimentMetric, loadSantimentMetric)
+                  , 'dev_activity'           : (getSantimentMetric, loadSantimentMetric)
+                  , 'exchange_funds_flow'    : (getSantimentMetric, loadSantimentMetric)
+                  , 'social_volume'          : (getSantimentMetric, loadSocialVolume)
+                  , 'social_chart_data'      : (getSantimentMetric, loadSocialChartData)
+                  , 'social_messages'        : (getSantimentMetric, loadSocialMessages)
                   }
 
 # ------------------------ #
@@ -300,6 +244,12 @@ def timeToSantimentIndex(time, start, interval):
 
   return index
 
+def santimentTimeToDatetime(san_time):
+  # Remove the milliseconds/microseconds
+  san_time = str(san_time).partition('+')[0]
+
+  return datetime.datetime.strptime(san_time, "%Y-%m-%d %H:%M:%S")
+
 # Converts a datetime.timedelta() object to ISO format for Santiment
 def intervalISOFormat(interval):
   shortcode = ""
@@ -308,11 +258,11 @@ def intervalISOFormat(interval):
   s_in_d = 60 * 60 * 24
   s_in_h = 60 * 60
   if (seconds % s_in_d == 0):
-    shortcode = str(seconds // s_in_d) + "d"
+    shortcode = str(seconds // s_in_d) + 'd'
   elif (seconds % s_in_h == 0):
-    shortcode = str(seconds // s_in_h) + "h"
+    shortcode = str(seconds // s_in_h) + 'h'
   else:
-    shortcode = str(seconds // 60) + "m"
+    shortcode = str(seconds // 60) + 'm'
 
   return shortcode
 
@@ -386,7 +336,32 @@ if __name__ == '__main__':
 
   ass = Asset('ethereum', 'ETH')
 
-  print(getMetric('price', ass, datetime.datetime(2018, 3, 1, 12, 0)))
-  print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12, 0)))
-  print(getMetric('price_bid', ass, datetime.datetime.now()))
-  print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12, 0, 0), [3, 'buy']))
+  print(getMetric('price', ass, datetime.datetime(2018, 1, 1, 12)))
+  print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12)))
+  print(getMetric('price_bid', ass, None))
+  print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12), [3, 'buy']))
+  #print(getMetric('social_messages', ass, datetime.datetime(2019, 1, 12, 0, 0), [3, 'buy']))
+
+def santimentPriceInconsistency():
+  start    = datetime.datetime(2019, 1, 1)
+  end      = datetime.datetime(2019, 1, 15)
+  interval = datetime.timedelta(hours=12)
+
+  data1 = san.get(
+    ('prices/ethereum')
+  , from_date = start.isoformat()
+  , to_date   = end.isoformat()
+  , interval  = intervalISOFormat(interval)
+  )
+
+  interval = datetime.timedelta(days=1)
+
+  data2 = san.get(
+    ('prices/ethereum')
+  , from_date = start.isoformat()
+  , to_date   = end.isoformat()
+  , interval  = intervalISOFormat(interval)
+  )
+
+  print(data1)
+  print(data2)
