@@ -103,7 +103,7 @@ def getCachedMetric(metric, asset, time):
 
 def loadPrice(metric, asset, start, end, interval, args):
   data = san.get(
-    ("prices/" + asset.slug)
+    ('prices/' + asset.slug)
   , from_date = start.isoformat()
   , to_date   = end.isoformat()
   , interval  = intervalISOFormat(interval)
@@ -111,17 +111,6 @@ def loadPrice(metric, asset, start, end, interval, args):
 
   # Cache all the data
   cacheSantimentMetric('price', asset, start, interval, data[UNIT])
-
-# Get historical price of an asset. Should be used strictly for historical data.
-# For live data, use price_bid and price_ask (queries Binance)
-def getPrice(metric, asset, time, args):
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadMetric(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time)
-
 
 # PRE: args[0] contains the social volume type (as int)
 def loadSocialVolume(metric, asset, start, end, interval, args):
@@ -136,18 +125,6 @@ def loadSocialVolume(metric, asset, start, end, interval, args):
   )
 
   cacheSantimentMetric(metric , asset, start, interval, data['mentionsCount'])
-
-# PRE: args[0] contains the social volume type (as int)
-def getSocialVolume(metric, asset, time, args):
-  assert len(args) > 0
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadMetric(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time)
-
 
 # PRE: args[0] contains the social sources type (as int)
 # and  args[1] contains the search text
@@ -165,19 +142,6 @@ def loadSocialChartData(metric, asset, start, end, interval, args):
 
   cacheSantimentMetric(metric, asset, start, interval, data['chartData'])
 
-# PRE: args[0] contains the social sources type (as int)
-# and  args[1] contains the search text
-def getSocialChartData(metric, asset, time, args):
-  assert len(args) > 1
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadMetric(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time)
-
-
 # PRE: args[0] contains the social source type (as int)
 # and  args[1] contains the search text
 def loadSocialMessages(metric, asset, start, end, interval, args):
@@ -192,24 +156,11 @@ def loadSocialMessages(metric, asset, start, end, interval, args):
   , interval    = intervalISOFormat(interval)
   )
 
-  cacheSantimentMetric(metric, asset, start, interval, data['messages'])
-
-# PRE: args[0] contains the social source type (as int)
-# and  args[1] contains the search text
-def getSocialMessages(metric, asset, time, args):
-  assert len(args) > 1
-
-  start    = getSanStartTime(time)
-  end      = getSanEndTime(time)
-  interval = getSanInterval()
-
-  loadMetric(metric, asset, start, end, interval, args)
-  return getCachedMetric(metric, asset, time).values
-
+  cacheSantimentMetric(metric, asset, start, interval, data['messages'].values)
 
 def loadSantimentMetric(metric, asset, start, end, interval, args):
   data = san.get(
-    (metric + "/" + asset.slug)
+    (metric + '/' + asset.slug)
   , from_date = start.isoformat()
   , to_date   = end.isoformat()
   , interval  = intervalISOFormat(interval)
@@ -257,7 +208,7 @@ def getVolume(metric, asset, time, args):
 # Note that sometimes a the load function might not exist eg for live data
 METRIC_FUNC_DIC = { 'price_bid'              : (getPriceBid, None)
                   , 'price_ask'              : (getPriceAsk, None)
-                  , 'price'                  : (getPrice, loadPrice)
+                  , 'price'                  : (getSantimentMetric, loadPrice)
                   , 'daily_active_addresses' : (getSantimentMetric, loadSantimentMetric)
                   , 'network_growth'         : (getSantimentMetric, loadSantimentMetric)
                   , 'burn_rate'              : (getSantimentMetric, loadSantimentMetric)
@@ -265,9 +216,9 @@ METRIC_FUNC_DIC = { 'price_bid'              : (getPriceBid, None)
                   , 'github_activity'        : (getSantimentMetric, loadSantimentMetric)
                   , 'dev_activity'           : (getSantimentMetric, loadSantimentMetric)
                   , 'exchange_funds_flow'    : (getSantimentMetric, loadSantimentMetric)
-                  , 'social_volume'          : (getSocialVolume, loadSocialVolume)
-                  , 'social_chart_data'      : (getSocialChartData, loadSocialChartData)
-                  , 'social_messages'        : (getSocialMessages, loadSocialMessages)
+                  , 'social_volume'          : (getSantimentMetric, loadSocialVolume)
+                  , 'social_chart_data'      : (getSantimentMetric, loadSocialChartData)
+                  , 'social_messages'        : (getSantimentMetric, loadSocialMessages)
                   }
 
 # ------------------------ #
