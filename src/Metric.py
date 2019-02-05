@@ -60,10 +60,14 @@ def getMetric(metric, asset, time, args=[]):
   if isMetricCached(metric, asset, time):
     return getCachedMetric(metric, asset, time)
 
-  data = METRIC_FUNC_DIC[metric](metric, asset, time, args)
+  data = METRIC_FUNC_DIC[metric][0](metric, asset, time, args)
   cacheMetric(metric, asset, time, data)
 
   return data
+
+# Loads a metric into cache
+def loadMetric(metric, asset, start, end, interval, args=[]):
+  METRIC_FUNC_DIC[metric][1](metric, asset, start, end, interval, args)
 
 # Returns whether a certain datapoint exists in cache
 def isMetricCached(metric, asset, time):
@@ -96,10 +100,6 @@ def cacheSantimentMetric(metric, asset, start, interval, data):
 def getCachedMetric(metric, asset, time):
   return METRIC_CACHE[asset.symbol][metric][time]
 
-# Loads a metric into cache
-def loadMetric(metric, asset, start, end, interval, args=[]):
-  METRIC_LOAD_DIC[metric](metric, asset, start, end, interval, args)
-
 
 def loadPrice(metric, asset, start, end, interval, args):
   data = san.get(
@@ -119,7 +119,7 @@ def getPrice(metric, asset, time, args):
   end      = getSanEndTime(time)
   interval = getSanInterval()
 
-  loadPrice(metric, asset, start, end, interval, args)
+  loadMetric(metric, asset, start, end, interval, args)
   return getCachedMetric(metric, asset, time)
 
 
@@ -145,7 +145,7 @@ def getSocialVolume(metric, asset, time, args):
   end      = getSanEndTime(time)
   interval = getSanInterval()
 
-  loadSocialVolume(metric, asset, start, end, interval, args)
+  loadMetric(metric, asset, start, end, interval, args)
   return getCachedMetric(metric, asset, time)
 
 
@@ -174,7 +174,7 @@ def getSocialChartData(metric, asset, time, args):
   end      = getSanEndTime(time)
   interval = getSanInterval()
 
-  loadSocialChartData(metric, asset, start, end, interval, args)
+  loadMetric(metric, asset, start, end, interval, args)
   return getCachedMetric(metric, asset, time)
 
 
@@ -184,7 +184,7 @@ def loadSocialMessages(metric, asset, start, end, interval, args):
   assert len(args) > 1
 
   data = san.get(
-    ("topic_search/messages")
+    ('topic_search/messages')
   , source      = SOCIAL_SOURCE_TYPES[args[0]]
   , search_text = args[1]
   , from_date   = start.isoformat()
@@ -203,7 +203,7 @@ def getSocialMessages(metric, asset, time, args):
   end      = getSanEndTime(time)
   interval = getSanInterval()
 
-  loadSocialMessages(metric, asset, start, end, interval, args)
+  loadMetric(metric, asset, start, end, interval, args)
   return getCachedMetric(metric, asset, time).values
 
 
@@ -223,7 +223,7 @@ def getSantimentMetric(metric, asset, time, args):
   end      = getSanEndTime(time)
   interval = getSanInterval()
 
-  loadSantimentMetric(metric, asset, start, end, interval, args)
+  loadMetric(metric, asset, start, end, interval, args)
   return getCachedMetric(metric, asset, time)
 
 
@@ -253,33 +253,21 @@ def getVolume(metric, asset, time, args):
   pass
 
 
-# Dictionary that pairs a metric with its function
-METRIC_FUNC_DIC = { 'price_bid'              : getPriceBid
-                  , 'price_ask'              : getPriceAsk
-                  , 'price'                  : getPrice
-                  , 'daily_active_addresses' : getSantimentMetric
-                  , 'network_growth'         : getSantimentMetric
-                  , 'burn_rate'              : getSantimentMetric
-                  , 'transaction_volume'     : getSantimentMetric
-                  , 'github_activity'        : getSantimentMetric
-                  , 'dev_activity'           : getSantimentMetric
-                  , 'exchange_funds_flow'    : getSantimentMetric
-                  , 'social_volume'          : getSocialVolume
-                  , 'social_chart_data'      : getSocialChartData
-                  , 'social_messages'        : getSocialMessages
-                  }
-
-METRIC_LOAD_DIC = { 'price'                  : loadPrice
-                  , 'daily_active_addresses' : loadSantimentMetric
-                  , 'network_growth'         : loadSantimentMetric
-                  , 'burn_rate'              : loadSantimentMetric
-                  , 'transaction_volume'     : loadSantimentMetric
-                  , 'github_activity'        : loadSantimentMetric
-                  , 'dev_activity'           : loadSantimentMetric
-                  , 'exchange_funds_flow'    : loadSantimentMetric
-                  , 'social_volume'          : loadSocialVolume
-                  , 'social_chart_data'      : loadSocialChartData
-                  , 'social_messages'        : loadSocialMessages
+# Dictionary that pairs a metric with its get and load functions.
+# Note that sometimes a the load function might not exist eg for live data
+METRIC_FUNC_DIC = { 'price_bid'              : (getPriceBid, None)
+                  , 'price_ask'              : (getPriceAsk, None)
+                  , 'price'                  : (getPrice, loadPrice)
+                  , 'daily_active_addresses' : (getSantimentMetric, loadSantimentMetric)
+                  , 'network_growth'         : (getSantimentMetric, loadSantimentMetric)
+                  , 'burn_rate'              : (getSantimentMetric, loadSantimentMetric)
+                  , 'transaction_volume'     : (getSantimentMetric, loadSantimentMetric)
+                  , 'github_activity'        : (getSantimentMetric, loadSantimentMetric)
+                  , 'dev_activity'           : (getSantimentMetric, loadSantimentMetric)
+                  , 'exchange_funds_flow'    : (getSantimentMetric, loadSantimentMetric)
+                  , 'social_volume'          : (getSocialVolume, loadSocialVolume)
+                  , 'social_chart_data'      : (getSocialChartData, loadSocialChartData)
+                  , 'social_messages'        : (getSocialMessages, loadSocialMessages)
                   }
 
 # ------------------------ #
