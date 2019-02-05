@@ -55,7 +55,8 @@ def setBinanceKeys(apiKey, secretKey):
 
 # Returns the specified metric for any given asset at any given time
 def getMetric(metric, asset, time, args=[]):
-  time = reformatTime(time)
+  if type(time) == type(datetime.datetime):
+    time = reformatTime(time)
 
   if isMetricCached(metric, asset, time):
     return getCachedMetric(metric, asset, time)
@@ -91,10 +92,9 @@ def cacheMetric(metric, asset, time, data):
 
 # Caches big chunks of santiment data
 def cacheSantimentMetric(metric, asset, start, interval, data):
-  i = 0
-  for d in data:
-    cacheMetric(metric, asset, start + i * interval, d)
-    i += 1
+  for i in range(len(data.index)):
+    time = santimentTimeToDatetime(data.index[i])
+    cacheMetric(metric, asset, time, data.values[i])
 
 # PRE: the metric IS stored in cache (see isMetricCached())
 def getCachedMetric(metric, asset, time):
@@ -110,7 +110,7 @@ def loadPrice(metric, asset, start, end, interval, args):
   )
 
   # Cache all the data
-  cacheSantimentMetric('price', asset, start, interval, data[UNIT])
+  cacheSantimentMetric(metric, asset, start, interval, data[UNIT])
 
 # PRE: args[0] contains the social volume type (as int)
 def loadSocialVolume(metric, asset, start, end, interval, args):
@@ -175,6 +175,11 @@ def getSantimentMetric(metric, asset, time, args):
   interval = getSanInterval()
 
   loadMetric(metric, asset, start, end, interval, args)
+
+  #TODO: rm
+  if not isMetricCached(metric, asset, time):
+    print('!!! MISSING DATA !!!', metric, asset, time)
+
   return getCachedMetric(metric, asset, time)
 
 
@@ -239,6 +244,12 @@ def timeToSantimentIndex(time, start, interval):
 
   return index
 
+def santimentTimeToDatetime(san_time):
+  # Remove the milliseconds/microseconds
+  san_time = str(san_time).partition('+')[0]
+
+  return datetime.datetime.strptime(san_time, "%Y-%m-%d %H:%M:%S")
+
 # Converts a datetime.timedelta() object to ISO format for Santiment
 def intervalISOFormat(interval):
   shortcode = ""
@@ -247,11 +258,11 @@ def intervalISOFormat(interval):
   s_in_d = 60 * 60 * 24
   s_in_h = 60 * 60
   if (seconds % s_in_d == 0):
-    shortcode = str(seconds // s_in_d) + "d"
+    shortcode = str(seconds // s_in_d) + 'd'
   elif (seconds % s_in_h == 0):
-    shortcode = str(seconds // s_in_h) + "h"
+    shortcode = str(seconds // s_in_h) + 'h'
   else:
-    shortcode = str(seconds // 60) + "m"
+    shortcode = str(seconds // 60) + 'm'
 
   return shortcode
 
@@ -325,7 +336,32 @@ if __name__ == '__main__':
 
   ass = Asset('ethereum', 'ETH')
 
-  print(getMetric('price', ass, datetime.datetime(2018, 3, 1, 12, 0)))
-  print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12, 0)))
-  print(getMetric('price_bid', ass, datetime.datetime.now()))
-  print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12, 0, 0), [3, 'buy']))
+  print(getMetric('price', ass, datetime.datetime(2018, 1, 1, 12)))
+  print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12)))
+  print(getMetric('price_bid', ass, None))
+  print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12), [3, 'buy']))
+  #print(getMetric('social_messages', ass, datetime.datetime(2019, 1, 12, 0, 0), [3, 'buy']))
+
+def santimentPriceInconsistency():
+  start    = datetime.datetime(2019, 1, 1)
+  end      = datetime.datetime(2019, 1, 15)
+  interval = datetime.timedelta(hours=12)
+
+  data1 = san.get(
+    ('prices/ethereum')
+  , from_date = start.isoformat()
+  , to_date   = end.isoformat()
+  , interval  = intervalISOFormat(interval)
+  )
+
+  interval = datetime.timedelta(days=1)
+
+  data2 = san.get(
+    ('prices/ethereum')
+  , from_date = start.isoformat()
+  , to_date   = end.isoformat()
+  , interval  = intervalISOFormat(interval)
+  )
+
+  print(data1)
+  print(data2)
