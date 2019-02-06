@@ -68,7 +68,20 @@ def getMetric(metric, asset, time, args=[]):
 
 # Loads a metric into cache
 def loadMetric(metric, asset, start, end, interval, args=[]):
-  METRIC_FUNC_DIC[metric][1](metric, asset, start, end, interval, args)
+  #TODO: clean that shit up
+  _start = start
+  _end   = start
+
+  while True:
+    _end = min(getEndForComplexity(_start, interval, MAX_COMPLEXITY), end)
+
+    METRIC_FUNC_DIC[metric][1](metric, asset, _start, _end, interval, args)
+
+    if _end == end:
+      return
+
+    _start = _end
+    _end   = end
 
 # Returns whether a certain datapoint exists in cache
 def isMetricCached(metric, asset, time):
@@ -144,8 +157,12 @@ def loadSocialChartData(metric, asset, start, end, interval, args):
 
 # PRE: args[0] contains the social source type (as int)
 # and  args[1] contains the search text
-def loadSocialMessages(metric, asset, start, end, interval, args):
+def getSocialMessages(metric, asset, time, args):
   assert len(args) > 1
+
+  start    = getSanStartTime(time)
+  end      = getSanEndTime(time)
+  interval = getSanInterval()
 
   data = san.get(
     ('topic_search/messages')
@@ -156,7 +173,7 @@ def loadSocialMessages(metric, asset, start, end, interval, args):
   , interval    = intervalISOFormat(interval)
   )
 
-  cacheSantimentMetric(metric, asset, start, interval, data['messages'].values)
+  return data['messages'].values
 
 def loadSantimentMetric(metric, asset, start, end, interval, args):
   data = san.get(
@@ -213,6 +230,7 @@ def getVolume(metric, asset, time, args):
 # Note that sometimes a the load function might not exist eg for live data
 METRIC_FUNC_DIC = { 'price_bid'              : (getPriceBid, None)
                   , 'price_ask'              : (getPriceAsk, None)
+                  , 'social_messages'        : (getSocialMessages, None)
                   , 'price'                  : (getSantimentMetric, loadPrice)
                   , 'daily_active_addresses' : (getSantimentMetric, loadSantimentMetric)
                   , 'network_growth'         : (getSantimentMetric, loadSantimentMetric)
@@ -223,7 +241,6 @@ METRIC_FUNC_DIC = { 'price_bid'              : (getPriceBid, None)
                   , 'exchange_funds_flow'    : (getSantimentMetric, loadSantimentMetric)
                   , 'social_volume'          : (getSantimentMetric, loadSocialVolume)
                   , 'social_chart_data'      : (getSantimentMetric, loadSocialChartData)
-                  , 'social_messages'        : (getSantimentMetric, loadSocialMessages)
                   }
 
 # ------------------------ #
@@ -268,6 +285,14 @@ def intervalISOFormat(interval):
 
 # How much data we should fetch around a given time
 sanTimeDelta = datetime.timedelta(days=1)
+
+MAX_COMPLEXITY = 2000
+
+def getDataComplexity(start, end, interval):
+  return int((end - start) / interval)
+
+def getEndForComplexity(start, interval, complexity):
+  return start + interval * complexity
 
 # Returns the start time at which we should query Santiment for data
 def getSanStartTime(time):
@@ -336,32 +361,10 @@ if __name__ == '__main__':
 
   ass = Asset('ethereum', 'ETH')
 
+
+  #loadMetric("social_volume", ass, datetime.datetime(2018, 1, 1), datetime.datetime(2019, 1, 1), datetime.timedelta(minutes=5), [3, "ethereum"])
+
   print(getMetric('price', ass, datetime.datetime(2018, 1, 1, 12)))
   print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12)))
   print(getMetric('price_bid', ass, None))
   print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12), [3, 'buy']))
-  #print(getMetric('social_messages', ass, datetime.datetime(2019, 1, 12, 0, 0), [3, 'buy']))
-
-def santimentPriceInconsistency():
-  start    = datetime.datetime(2019, 1, 1)
-  end      = datetime.datetime(2019, 1, 15)
-  interval = datetime.timedelta(hours=12)
-
-  data1 = san.get(
-    ('prices/ethereum')
-  , from_date = start.isoformat()
-  , to_date   = end.isoformat()
-  , interval  = intervalISOFormat(interval)
-  )
-
-  interval = datetime.timedelta(days=1)
-
-  data2 = san.get(
-    ('prices/ethereum')
-  , from_date = start.isoformat()
-  , to_date   = end.isoformat()
-  , interval  = intervalISOFormat(interval)
-  )
-
-  print(data1)
-  print(data2)
