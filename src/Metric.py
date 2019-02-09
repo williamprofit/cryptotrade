@@ -3,6 +3,7 @@ import sys
 from Asset import Asset
 import datetime
 import time
+import numpy as np
 
 import ccxt
 
@@ -123,6 +124,7 @@ def loadPrice(metric, asset, start, end, interval, args):
   )
 
   # Cache all the data
+  fillMissingData(start, end, interval, data)
   cacheSantimentMetric(metric, asset, start, interval, data[UNIT])
 
 # PRE: args[0] contains the social volume type (as int)
@@ -312,42 +314,30 @@ def myround(x, base=5):
 
 # Keep only minutes and round them to nearest 5
 def reformatTime(time):
-  new = time.replace(minute=myround(time.minute) ,second=0, microsecond=0)
+  new = time.replace(minute=myround(time.minute), second=0, microsecond=0)
   return new
 
-def fillMissingData(self, dates, data, params):
-  current_datetime = params.from_date
+def fillMissingData(start, end, interval, data):
+  curr = start
+  i    = 0
+  while curr != end:
+    san_date = santimentTimeToDatetime(data.index[i])
+    if curr != san_date:
+      if i == 0:
+        avg = data.values[0]
+      elif i == len(data) - 1:
+        avg = data.values[len(data) - 1]
+      else:
+        prev_date = santimentTimeToDatetime(data.index[i-1])
+        next_date = santimentTimeToDatetime(data.index[i+1])
+        avg = (data.values[i-1] + data.values[i-2]) / ((next_date - prev_date) / interval)
 
-  fixed_data = []
-  i = 0
-  latest_datetime = current_datetime
-  while i < len(dates):
-    if (self.areSameDates(dates[i], current_datetime)):
-      fixed_data.append(data[i])
-      latest_datetime = current_datetime
-      current_datetime += params.interval
-      i += 1
-    else:
-      counter = 1
-      from_value = fixed_data[-1]
-      to_value = data[i]
-      temp_datetime = latest_datetime + params.interval
+      index = curr.isoformat()
+      index = index[:10] + ' ' + index[11:]
+      data.loc[index] = avg
 
-      while not (self.areSameDates(dates[i], temp_datetime)):
-        counter += 1
-        temp_datetime += params.interval
-
-      to_value = data[i]
-      increment = (to_value - from_value) / counter
-      for j in range(1,counter):
-        fixed_data.append(from_value + j * increment)
-
-      current_datetime = latest_datetime + counter * params.interval
-      latest_datetime = current_datetime
-
-  return fixed_data
-
-
+    curr += interval
+    i    += 1
 
 # --------------------- #
 # --- Usage example --- #
@@ -363,6 +353,9 @@ if __name__ == '__main__':
 
 
   #loadMetric("social_volume", ass, datetime.datetime(2018, 1, 1), datetime.datetime(2019, 1, 1), datetime.timedelta(minutes=5), [3, "ethereum"])
+
+  # Missing data case
+  #print(getMetric('price', ass, datetime.datetime(2018, 6, 3, 23, 40)))
 
   print(getMetric('price', ass, datetime.datetime(2018, 1, 1, 12)))
   print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12)))
