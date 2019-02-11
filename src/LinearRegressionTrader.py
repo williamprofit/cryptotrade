@@ -10,7 +10,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from Portfolio import Portfolio
 
-
+#This file uses a linear regression to predict the future price of a cryptocurrency based on other metrics. 
 
 class LinearRegressionTrader(Trader):
 
@@ -21,28 +21,36 @@ class LinearRegressionTrader(Trader):
 
 
   def train(self, start_training, end_training, timeframe):
+    #Load list of values for all metrics
     for metric in self.metrics_list:
       Metric.loadMetric(metric, self.ass, start_training, end_training, timeframe) 
     
-    for social_platform_number in range (0,4):
-      Metric.loadMetric("social_chart_data", self.ass, start_training, end_training, timeframe, args =[social_platform_number, "ethereum"]) 
+    #Load list of values for all social platforms, in a separate dictionary
+    #for social_platform_number in range (0,4):
+    #  Metric.loadMetric("social_chart_data", self.ass, start_training, end_training, timeframe, args =[social_platform_number, "ethereum"]) 
     
+    #Initialize the array(inputs) and list(outputs) to be used to train the linear regression
     current_metrics_array = self.currentMetricsArrayGenerator(self.ass, start_training, end_training, timeframe)
-    future_prices_list = self.futurePricesListGenerator(self.ass, start_training, end_training, timeframe)
-    self.linear_model = self.regression(current_metrics_array, future_prices_list)
+    future_prices_list    = self.futurePricesListGenerator(self.ass, start_training, end_training, timeframe)
+
+    #Train the linear model and set it as a global variable - to be used for future predictions
+    self.linear_model     = self.regression(current_metrics_array, future_prices_list)
 
 
   def currentMetricsArrayGenerator(self, asset, start_time, end_time, timeframe):
     metrics_array = []
     time_at_moment = start_time
 
+    #Loop for all times in the range of start_time to end_time
     while time_at_moment < end_time - timeframe:
+
+      #Create a list of the values of all the required metrics at a particular moment
       metrics_in_moment = []
       for metric in self.metrics_list:
         metrics_in_moment.append(Metric.getMetric(metric, asset, time_at_moment))
-      for social_platform_number in range (0,4):
-         metrics_in_moment.append(Metric.getMetric(metric, asset, time_at_moment, args =[social_platform_number, "ethereum"])) 
-      
+      #for social_platform_number in range (0,4):
+      #   metrics_in_moment.append(Metric.getMetric(metric, asset, time_at_moment, args =[social_platform_number, "ethereum"])) 
+
       metrics_array.append(metrics_in_moment)
       time_at_moment += timeframe
 
@@ -50,9 +58,11 @@ class LinearRegressionTrader(Trader):
 
 
   def futurePricesListGenerator(self, asset, start_time, end_time, timeframe):
+    #Since the price list is supposed to be the outputs change initial time to be the one which can be predicted
     price_list = []
     time_at_future = start_time + timeframe
 
+    #loop to find price at all separate points in time
     while time_at_future < end_time:
       price_list.append(Metric.getMetric("price", asset, time_at_future))
       time_at_future += timeframe
@@ -61,51 +71,56 @@ class LinearRegressionTrader(Trader):
 
 
   def regression(self, past_data, future_data):
-    X = past_data
-    y = future_data
+    X  = past_data
+    y  = future_data
+
+    #Load linear model from SKlearn
     lm = sklearn.linear_model.LinearRegression()
+
+    #Train model
     lm.fit(X,y)
-    print(y)
-    print(lm.predict(X))
 
-
+    #Return model to be used to predict other values
     return lm
 
 
   def prediction_at_time(self, list_of_metric_values):
+    #Get prediciton from global linear model
     prediction = self.linear_model.predict(list_of_metric_values)
-
     return prediction
 
 
   def action(self):
     super().action()
+    #Set value for time and asset
     asset = self.portfolio.getAsset('ETH')
+    now   = self.curr_time
+    
 
-    now = self.curr_time
+    #Load metrics values for the particular moment for predicition 
     list_of_metric_values = []
     for metric in self.metrics_list:
       list_of_metric_values.append(Metric.getMetric(metric, self.ass, now))
     
-    for social_platform_number in range (0,4):
-      list_of_metric_values.append(Metric.getMetric("social_chart_data", self.ass, now, args =[social_platform_number, "ethereum"])) 
+    #for social_platform_number in range (0,4):
+    #  list_of_metric_values.append(Metric.getMetric("social_chart_data", self.ass, now, args =[social_platform_number, "ethereum"])) 
 
+    #The model expects a 2d Array of values to predict, hence put list in a list
     list_of_metric_values = [list_of_metric_values]
     print(list_of_metric_values)
-    
+    #Get predicted price and current price
     curr_price = Metric.getMetric("price", self.ass, now)
     pred_price = self.prediction_at_time(list_of_metric_values)
-
-
+    print(pred_price)
+    print(curr_price)
+    #Buy if predicted price is higher than current
     if pred_price > curr_price:
       self.market.buy(asset, 1)
-      print(pred_price)
-      print(curr_price)
+      
 
+    #Sell if predicted price is lower than current
     elif pred_price < curr_price:
       self.market.sell(asset, 1)
-      print(pred_price)
-      print(curr_price)
 
 
   def finalAction(self):
