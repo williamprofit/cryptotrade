@@ -69,7 +69,6 @@ def getMetric(metric, asset, time, args=[]):
 
 # Loads a metric into cache
 def loadMetric(metric, asset, start, end, interval, args=[]):
-  #TODO: clean that shit up
   _start = start
   _end   = start
 
@@ -345,19 +344,3 @@ def fillMissingData(start, end, interval, data):
 
 if __name__ == '__main__':
   # Note: preceed any function call with Metric.
-
-  setBinanceKeys('0xWlkQiiwKnhFYleIAKhJpKVfloVbnoianTsWgz9DOM7OEoB5ui2rEXEy4CHDI8C'
-                ,'ldVscclShb30odBaL6lh6ZGB9tHwLPeSlWjgeDTKZOtCso2OU25TyWkbOnP0GyOt')
-
-  ass = Asset('ethereum', 'ETH')
-
-
-  #loadMetric("social_volume", ass, datetime.datetime(2018, 1, 1), datetime.datetime(2019, 1, 1), datetime.timedelta(minutes=5), [3, "ethereum"])
-
-  # Missing data case
-  #print(getMetric('price', ass, datetime.datetime(2018, 6, 3, 23, 40)))
-
-  print(getMetric('price', ass, datetime.datetime(2018, 1, 1, 12)))
-  print(getMetric('burn_rate', ass, datetime.datetime(2018, 3, 1, 12)))
-  print(getMetric('price_bid', ass, None))
-  print(getMetric('social_volume', ass, datetime.datetime(2019, 1, 12), [3, 'buy']))

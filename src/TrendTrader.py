@@ -2,6 +2,7 @@ from Trader import Trader
 from Metric import Metric, MetricParams
 import datetime
 
+# Naive trader for testing purposes
 class TrendTrader(Trader):
 
   def backtest(self, start_date, end_date, timeframe):
