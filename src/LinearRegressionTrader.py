@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 from datetime import datetime, timedelta
 from Portfolio import Portfolio
+import matplotlib.pyplot as plt
 
 #This file uses a linear regression to predict the future price of a cryptocurrency based on other metrics. 
 
@@ -24,11 +25,7 @@ class LinearRegressionTrader(Trader):
     #Load list of values for all metrics
     for metric in self.metrics_list:
       Metric.loadMetric(metric, self.ass, start_training, end_training, timeframe) 
-    
-    #Load list of values for all social platforms, in a separate dictionary
-    #for social_platform_number in range (0,4):
-    #  Metric.loadMetric("social_chart_data", self.ass, start_training, end_training, timeframe, args =[social_platform_number, "ethereum"]) 
-    
+        
     #Initialize the array(inputs) and list(outputs) to be used to train the linear regression
     current_metrics_array = self.currentMetricsArrayGenerator(self.ass, start_training, end_training, timeframe)
     future_prices_list    = self.futurePricesListGenerator(self.ass, start_training, end_training, timeframe)
@@ -48,8 +45,6 @@ class LinearRegressionTrader(Trader):
       metrics_in_moment = []
       for metric in self.metrics_list:
         metrics_in_moment.append(Metric.getMetric(metric, asset, time_at_moment))
-      #for social_platform_number in range (0,4):
-      #   metrics_in_moment.append(Metric.getMetric(metric, asset, time_at_moment, args =[social_platform_number, "ethereum"])) 
 
       metrics_array.append(metrics_in_moment)
       time_at_moment += timeframe
@@ -79,7 +74,7 @@ class LinearRegressionTrader(Trader):
 
     #Train model
     lm.fit(X,y)
-
+    
     #Return model to be used to predict other values
     return lm
 
@@ -102,17 +97,12 @@ class LinearRegressionTrader(Trader):
     for metric in self.metrics_list:
       list_of_metric_values.append(Metric.getMetric(metric, self.ass, now))
     
-    #for social_platform_number in range (0,4):
-    #  list_of_metric_values.append(Metric.getMetric("social_chart_data", self.ass, now, args =[social_platform_number, "ethereum"])) 
 
-    #The model expects a 2d Array of values to predict, hence put list in a list
+    #The model expects a 2D Array of values to predict, hence put list in a list
     list_of_metric_values = [list_of_metric_values]
-    print(list_of_metric_values)
     #Get predicted price and current price
     curr_price = Metric.getMetric("price", self.ass, now)
     pred_price = self.prediction_at_time(list_of_metric_values)
-    print(pred_price)
-    print(curr_price)
     #Buy if predicted price is higher than current
     if pred_price > curr_price:
       self.market.buy(asset, 1)

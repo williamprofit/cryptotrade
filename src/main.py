@@ -1,5 +1,4 @@
 from Logger import Logger
-
 from TestTrader import TestTrader
 from BacktestMarket import BacktestMarket
 from BinanceMarket import BinanceMarket
@@ -8,6 +7,7 @@ from Portfolio import Portfolio
 import datetime
 import time
 import Metric
+from LinearRegressionTrader import LinearRegressionTrader
 
 def main():
   exampleBacktesting()
@@ -22,8 +22,8 @@ def exampleFronttesting():
   end_date  = datetime.datetime(2019, 2, 15)
   timeframe = datetime.timedelta(minutes=5)
 
-  apiKey  = '0xWlkQiiwKnhFYleIAKhJpKVfloVbnoianTsWgz9DOM7OEoB5ui2rEXEy4CHDI8C'
-  privKey = 'ldVscclShb30odBaL6lh6ZGB9tHwLPeSlWjgeDTKZOtCso2OU25TyWkbOnP0GyOt'
+  apiKey  = 'SOME BINANCE API KEY'
+  privKey = 'SOME BINANCE PRIV KEY'
 
   trader = TestTrader(portfolio, logger, 0)
   trader.fronttest(apiKey, privKey, end_date, timeframe)
@@ -32,14 +32,26 @@ def exampleBacktesting():
   logger = Logger()
   logger.addTarget('log/backtestlog.txt')
 
-  start    = datetime.datetime(2018, 1, 1)
-  end      = datetime.datetime(2019, 1, 1)
-  interval = datetime.timedelta(days=1)
+  start    = datetime.datetime(2019, 2, 10)
+  end      = datetime.datetime(2019, 2, 25)
+  interval = datetime.timedelta(days=5)
 
   portfolio = Portfolio(1000)
   portfolio.addAsset(Asset('ethereum', 'ETH'))
+  asset = Asset('ethereum', 'ETH')
 
-  trader = TestTrader(portfolio, logger, 0)
+  metrics_list = [
+    "burn_rate"              ,
+    "transaction_volume"     ,
+    "exchange_funds_flow"    ,
+    "price"
+  ]
+  start_train    = datetime.datetime(2018, 12, 1)
+  end_train      = datetime.datetime(2019, 1, 30)
+
+  trader = LinearRegressionTrader(portfolio, logger, 0, metrics_list, asset)
+  trader.train(start_train, end_train, interval)
+
   trader.backtest(start, end, interval)
 
 def exampleBinance():
